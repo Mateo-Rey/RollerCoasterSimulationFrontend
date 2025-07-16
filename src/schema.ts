@@ -17,8 +17,8 @@ export interface Guest {
 }
 
 export interface Message {
-    eventType: string;
-    eventTimestamp: string;
-    source: string;
-    data: string;
+    EventType: string;
+    EventTimestamp: string;
+    Source: string;
+    Data: string;
 }

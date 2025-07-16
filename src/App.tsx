@@ -27,18 +27,28 @@ function App() {
 
     ws.current.onopen = () => {
       console.log("WebSocket connected");
+      if (ws.current)
+        ws.current.send(
+          JSON.stringify({
+            EventType: "identify",
+            EventTimestamp: Date.now(),
+            Source: "REACT_UI",
+            Data: { client: "react" },
+          })
+        );
     };
 
     ws.current.onmessage = (event) => {
       const parsed = JSON.parse(event.data);
 
-      if (parsed.eventType === "parkData") {
-        setZones(new Map(Object.entries(parsed.data.zones)));
-        setGuests(new Map(Object.entries(parsed.data.guests)));
-      } else if (parsed.eventType === "rideRunning") {
-        // parsed.data is a JSON string with { zoneId: string, durationSeconds: number }
+      if (parsed.EventType === "parkData") {
+        
+        setZones(new Map(Object.entries(parsed.Data.zones)));
+        setGuests(new Map(Object.entries(parsed.Data.guests)));
+      } else if (parsed.EventType === "rideRunning") {
+        // parsed.Data is a JSON string with { zoneId: string, durationSeconds: number }
         // Adjust this parsing if the format is different
-        const rideInfo = parsed.data;
+        const rideInfo = parsed.Data;
         const { zoneId, durationSeconds } = rideInfo;
 
         setRideTimers((prev) => {
@@ -78,10 +88,10 @@ function App() {
             if (ws.current && ws.current.readyState === WebSocket.OPEN) {
               ws.current.send(
                 JSON.stringify({
-                  eventType: "rideEnded",
-                  eventTimestamp: Date.now(),
-                  source: "REACT_UI",
-                  data: timer.zoneId,
+                  EventType: "rideEnded",
+                  EventTimestamp: Date.now(),
+                  Source: "REACT_UI",
+                  Data: timer.zoneId,
                 })
               );
             }
@@ -116,16 +126,16 @@ function App() {
   };
 
   const addToRide = () => {
-    if (ws.current) {
+    if (ws.current && !zones.get(selectedZone)?.isRunning) {
       const uniqueGuests = selectedGuests.filter((guestId) =>
         guests.has(guestId)
       );
       ws.current.send(
         JSON.stringify({
-          eventType: "addToRide",
-          eventTimestamp: Date.now(),
-          source: "REACT_UI",
-          data: uniqueGuests,
+          EventType: "addToRide",
+          EventTimestamp: Date.now(),
+          Source: "REACT_UI",
+          Data: {guests: JSON.stringify(uniqueGuests)},
         })
       );
     }
@@ -142,10 +152,10 @@ function App() {
     ) {
       ws.current.send(
         JSON.stringify({
-          eventType: "startRide",
-          eventTimestamp: Date.now(),
-          source: "REACT_UI",
-          data: selectedZone,
+          EventType: "startRide",
+          EventTimestamp: Date.now(),
+          Source: "REACT_UI",
+          Data: selectedZone,
         })
       );
     }
@@ -160,83 +170,85 @@ function App() {
   return (
     <>
       <div className="grid grid-cols-3 gap-2">
-        {Array.from(zones.values()).map((zone) => (
-          <div key={zone.zoneId}>
-            <div
-              className={`bg-[rgb(10,10,10)] m-4 p-4 flex flex-col rounded-lg cursor-pointer ${
-                selectedZone === zone.zoneId ? "bg-green-800" : ""
-              }`}
-              onClick={() => {
-                if (selectedZone !== zone.zoneId) {
-                  setSelectedZone(zone.zoneId);
-                  setSelectedGuests([]);
-                }
-              }}
-            >
-              <h1>{zone.zoneName}</h1>
-              <p>
-                {((zone.queueCount / zone.queueCapacity) * 100).toFixed(0)}%
-              </p>
-              {/* Show ride timer if running */}
-              {getRemainingTimeForZone(zone.zoneId) > 0 && (
-                <p className="text-yellow-400 font-bold">
-                  Ride Running: {getRemainingTimeForZone(zone.zoneId)} sec
+        {Array.from(zones.values()).map((zone) => {
+          
+          return (
+            <div key={zone.zoneId}>
+              <div
+                className={`bg-[rgb(10,10,10)] m-4 p-4 flex flex-col rounded-lg cursor-pointer ${
+                  selectedZone === zone.zoneId ? "bg-green-800" : ""
+                }`}
+                onClick={() => {
+                  if (selectedZone !== zone.zoneId) {
+                    setSelectedZone(zone.zoneId);
+                    setSelectedGuests([]);
+                  }
+                }}
+              >
+                <h1>{zone.zoneName}</h1>
+                <p>
+                  {((zone.queueCount / zone.queueCapacity) * 100).toFixed(0)}%
                 </p>
+                {/* Show ride timer if running */}
+                {getRemainingTimeForZone(zone.zoneId) > 0 && (
+                  <p className="text-yellow-400 font-bold">
+                    Ride Running: {getRemainingTimeForZone(zone.zoneId)} sec
+                  </p>
+                )}
+              </div>
+
+              {selectedZone === zone.zoneId && (
+                <div className="mb-2 p-2 bg-[#2A2A40] border-2 border-[#3C3C5C]">
+                  {!zone.isRunning && (
+                    <button onClick={startRide}>Start Ride</button>
+                  )}
+                  {/* Guests in Ride */}
+                  <div className="mb-4">
+                    <h2 className="text-lg text-white mb-2">🎢 On the Ride</h2>
+                    {(guestsByZone.get(zone.zoneId) || [])
+                      .filter((g) => g.inRide)
+                      .map((g) => (
+                        <div
+                          key={g.id}
+                          className="text-white bg-[#3B3B5A] py-1 px-2 border-2 border-[#646496] mb-2"
+                        >
+                          <h3>Guest {g.id.slice(0, 5)}</h3>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Guests in Queue */}
+                  <div>
+                    <h2 className="text-lg text-white mb-2">🕓 In Queue</h2>
+                    {(guestsByZone.get(zone.zoneId) || [])
+                      .filter((g) => !g.inRide)
+                      .map((g) => (
+                        <div
+                          key={g.id}
+                          onClick={() => addSelectedGuest(g.id)}
+                          className={`text-white py-1 px-2 cursor-pointer border-2 border-[#B0B3C7] mb-2 ${
+                            selectedGuests.includes(g.id) ? "bg-green-800" : ""
+                          }`}
+                        >
+                          <h3 className="text-md">Guest {g.id.slice(0, 5)}</h3>
+                          <p>
+                            Frustration in:{" "}
+                            {Math.max(
+                              0,
+                              Math.round(
+                                (g.timeToFrustration - Date.now()) / 1000
+                              )
+                            )}{" "}
+                            sec
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               )}
             </div>
-
-            {selectedZone === zone.zoneId && (
-              <div className="mb-2 p-2 bg-[#2A2A40] border-2 border-[#3C3C5C]">
-                {!zone.isRunning && (
-                  <button onClick={startRide}>Start Ride</button>
-                )}
-
-                {/* Guests in Ride */}
-                <div className="mb-4">
-                  <h2 className="text-lg text-white mb-2">🎢 On the Ride</h2>
-                  {(guestsByZone.get(zone.zoneId) || [])
-                    .filter((g) => g.inRide)
-                    .map((g) => (
-                      <div
-                        key={g.id}
-                        className="text-white bg-[#3B3B5A] py-1 px-2 border-2 border-[#646496] mb-2"
-                      >
-                        <h3>Guest {g.id.slice(0, 5)}</h3>
-                      </div>
-                    ))}
-                </div>
-
-                {/* Guests in Queue */}
-                <div>
-                  <h2 className="text-lg text-white mb-2">🕓 In Queue</h2>
-                  {(guestsByZone.get(zone.zoneId) || [])
-                    .filter((g) => !g.inRide)
-                    .map((g) => (
-                      <div
-                        key={g.id}
-                        onClick={() => addSelectedGuest(g.id)}
-                        className={`text-white py-1 px-2 cursor-pointer border-2 border-[#B0B3C7] mb-2 ${
-                          selectedGuests.includes(g.id) ? "bg-green-800" : ""
-                        }`}
-                      >
-                        <h3 className="text-md">Guest {g.id.slice(0, 5)}</h3>
-                        <p>
-                          Frustration in:{" "}
-                          {Math.max(
-                            0,
-                            Math.round(
-                              (g.timeToFrustration - Date.now()) / 1000
-                            )
-                          )}{" "}
-                          sec
-                        </p>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <button
