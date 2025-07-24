@@ -5,20 +5,20 @@ export interface Zone {
   queueCount: number;
   queueCapacity: number;
   isRunning: boolean;
-  rideCount: number,
+  rideCount: number;
   rideTime: number;
+  multiplier: number;
 }
-
 export interface Guest {
   id: string;
   timeToFrustration: number;
   zoneId: string;
   inRide: boolean;
+  type: string;
 }
-
 export interface Message {
-    EventType: string;
-    EventTimestamp: string;
-    Source: string;
-    Data: string;
+  EventType: string;
+  EventTimestamp: string;
+  Source: string;
+  Data: string;
 }
