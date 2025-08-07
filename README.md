@@ -7,7 +7,7 @@ A real-time theme park management simulation built with React and TypeScript, fe
 The frontend provides an interactive web interface for managing a theme park simulation, including guest management, ride operations, and a comprehensive prestige system. Players can upgrade rides, manage queues, and progress through multiple prestige levels while dealing with dynamic difficulty scaling.
 ## [View Full Documentation](https://github.com/Mateo-Rey/RollerCoasterSimulationFrontend/blob/main/Unreal%20Engine%20Rollercoaster%20Simulation.pdf)
 
-[![Watch the walkthrough](https://img.youtube.com/vi/<VIDEO_ID>/hqdefault.jpg)](https://www.youtube.com/embed/fMWdvbyK92s)
+[![Watch the walkthrough](https://img.youtube.com/vi/fMWdvbyK92s/hqdefault.jpg)](https://www.youtube.com/embed/fMWdvbyK92s)
 
 ## ✨ Key Features
 
